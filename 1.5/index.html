@@ -1,0 +1,373 @@
+<html>
+<body>
+<style>
+	*{
+		margin: 0;
+		padding: 0;
+	}
+</style>
+</body>
+<script>
+var FPS = 20;
+var options = {keys: [" ","1","2"], sound: false, difficulty: 0, players: 1};
+var velocidade = 20;
+var pause = false;
+</script>
+<script src="script/Rectangle-1.1.js"></script>
+<script src="script/Star-1.0.js"></script>
+<script src="script/Stars-1.0.js"></script>
+<script src="script/Obstacle-1.5.js"></script>
+<script src="script/Obstacles-1.2.js"></script>
+<script src="script/Power-1.5.js"></script>
+<script src="script/Powers-1.2.js"></script>
+<script src="script/Sprites-1.0.js"></script>
+<script src="script/Tiro-1.0.js"></script>
+<script src="script/Tiros-1.0.js"></script>
+<script src="script/Actor-1.8.js"></script>
+<script src="script/HUD-1.2.js"></script>
+<script src="script/Enemy-1.2.js"></script>
+<script src="script/Enemies-1.1.js"></script>
+<script src="script/Sound-1.0.js"></script>
+<script>
+var canvas = document.createElement("canvas");
+var context = canvas.getContext("2d");
+document.body.appendChild(canvas);
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+var probability = [[[Smaller, Bigger, , LifeLife, Food, Food, LaserAmmo, BulletAmmo, Ghost, Ghost],[Smaller, Smaller, Smaller, Bigger, Bigger, Life, Food, LaserAmmo, BulletAmmo, Ghost],[Bigger, Bigger, Bigger, Bigger, Smaller, Smaller, Food, Ghost, LaserAmmo, BulletAmmo]],[[Enemy, Enemy, Enemy, Enemy, Enemy, Smart, Smart, Smart, Fire, Fire],[Enemy, Enemy, Enemy, Smart, Smart, Smart, Smart, Fire, Fire, Fire],[Enemy, Smart, Smart, Smart, Smart, Smart, Fire, Fire, Fire, Fire]]];
+
+var stars = new Stars();
+
+var actor = new Actor();
+
+var obstacles1 = new Obstacles(TopObstacle);
+var obstacles2 = new Obstacles(BottomObstacle);
+
+var powers = new Powers();
+
+var bullets = new Tiros(Bullet);
+var lasers = new Tiros(Laser);
+var enemybullets = new Tiros(EnemyBullet)
+
+var hud = new HUD();
+
+var enemies = new Enemies();
+
+var sounds =
+{	actorJump: new Sound("audio/chicken.wav"),
+	actorCollideObstacle: new Sound("audio/hurt.mp3"),
+	actorCollideSizePower: new Sound("audio/coin.mp3"),
+	actorCollideGhostPower: new Sound("audio/throw.wav"),
+	actorCollideLaserAmmoPower: new Sound("audio/gunload.mp3"),
+	actorFireLaser: new Sound("audio/blaster.mp3"),
+	actorCollideEnemy: new Sound("audio/collision.mp3"),
+	laserCollideEnemy: new Sound("audio/warning.wav"),
+	actorDeath: new Sound("audio/explosion.mp3")
+};
+
+var tecla = 0;
+
+var option = 0;
+
+function onKeyPress(event)
+{	if (event.key == options.keys[0])
+	{	actor.velocity = -velocidade;
+		sounds.actorJump.play();
+	}
+	if (event.key == options.keys[1])
+	{	actor.fire("bullet");
+	}
+	if (event.key == options.keys[2])
+	{	actor.fire("laser");
+	}
+	if (event.key == "Enter")
+	{
+		if(pause){
+			context.restore();
+			timer = setInterval(loop1, 1000/FPS);
+		}
+		else{
+			clearInterval(timer);
+			context.save();
+			context.font = "100px Arial";
+			context.textAlign = "center";
+			context.textBaseline = "middle";
+			context.fillStyle = "rgb(255, 255, 255)";
+			context.fillText("Clique \"Enter\" para continuar", canvas.width/2, canvas.height/2);
+			context.strokeStyle = "rgb(0, 0, 0)";
+			context.lineWidth = 3;
+			context.strokeText("Clique \"Enter\" para continuar", canvas.width/2, canvas.height/2);
+		}
+		pause = !pause;
+	}
+}
+
+document.addEventListener("keyup", onKeyUp);
+
+function onKeyUp(event)
+{	
+	if(event.keyCode == 13 && option == 0){
+		clearInterval(timer);
+		timer = setInterval(loop4, 1000/FPS);
+		document.removeEventListener("keyup", onKeyUp);
+		document.addEventListener("keydown", onKeyDown);
+	}
+	if (event.keyCode == 38)
+	{	option = (option-1+5)%5;
+		sounds.actorJump.play();
+	}
+	if (event.keyCode == 40)
+	{	option = (option+1)%5;
+		sounds.actorJump.play();
+	}
+
+	if (([13, 37, 39].indexOf(event.keyCode) != -1) && (option == 1))
+	{	options.sound = !options.sound;
+	}
+
+	if ((event.keyCode == 37) && (option == 2))
+	{	options.difficulty = (options.difficulty-1+3)%3;
+	}
+	if (([13, 39].indexOf(event.keyCode) != -1) && (option == 2))
+	{	options.difficulty = (options.difficulty+1)%3;
+	}
+
+	if (([13, 37, 39].indexOf(event.keyCode) != -1) && (option == 3))
+	{	options.players = (options.players%2)+1;
+	}
+
+	if ((event.keyCode == 13) && (option == 4))
+	{	option = -1;
+		document.removeEventListener("keyup", onKeyUp);
+		document.addEventListener("keypress", onKeyPress);
+		actor.sprites = new Sprites("./img/bird-4x1-388x287.png", 388, 287, 4, 2);
+		actor.ghost = {time: (7.5-(2.5*options.difficulty))*FPS, counter: 0};
+		actor.ammo = {laser: 3, bullet: 10};
+		actor.lifes = 3;
+		actor.health = 100;
+		actor.points = 0;
+		clearInterval(timer);
+		timer = setInterval(loop1, 1000/FPS);
+	}
+}
+
+function onKeyUp2(event){
+	if(event.key == "Enter"){
+		option = 0;
+		document.removeEventListener("keyup",onKeyUp2);
+		document.addEventListener("keyup",onKeyUp);
+		timer = setInterval(loop3, 1000/FPS);
+	}
+}
+
+function onKeyDown(event){
+	if (event.keyCode == 38)
+	{	tecla = (tecla-1+4)%4;
+		sounds.actorJump.play();
+	}
+	if (event.keyCode == 40)
+	{	tecla = (tecla+1)%4;
+		sounds.actorJump.play();
+	}
+	if(tecla<3 && event.keyCode != 40 && event.keyCode != 38){
+		options.keys[tecla] = event.key;
+	}
+	if(event.keyCode == 13 && tecla == 3){
+		option = 3;
+		tecla = 0;
+		document.addEventListener("keyup", onKeyUp);
+		document.removeEventListener("keydown",onKeyDown);
+		clearInterval(timer);
+		timer = setInterval(loop3, 1000/FPS);
+	}
+}
+
+var timer = setInterval(loop3, 1000/FPS);
+
+function loop1()
+{	context.fillStyle = "rgb(255, 255, 255)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	stars.iterate();
+
+	obstacles1.iterate(actor);
+
+	obstacles2.iterate(actor);
+
+	hud.draw();
+
+	powers.iterate(actor);
+
+	enemies.iterate(actor);
+
+	lasers.iterate([].concat(obstacles1.obstacles, obstacles2.obstacles, enemies.enemies));
+
+	bullets.iterate([].concat(obstacles1.obstacles, obstacles2.obstacles, enemies.enemies));
+
+	enemybullets.iterate(actor);
+
+	actor.draw();
+
+	actor.update();
+}
+
+function loop2()
+{	context.fillStyle = "rgb(255, 255, 255)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	context.fillStyle = "rgb(0, 0, 0)";
+	for (var rectangle of [].concat(stars.stars, obstacles1.obstacles, obstacles2.obstacles, powers.powers, enemies.enemies, lasers.beams))
+	{	rectangle.draw();
+	}
+
+	actor.sprites.draw(actor.x, actor.y, actor.height*actor.sprites.width/actor.sprites.height, actor.height);
+
+	if (actor.state == "down")
+	{	actor.velocity += 2;
+		actor.y += actor.velocity;
+
+		if (actor.y > canvas.height)
+		{	actor.sprites = new Sprites("img/ghost-1x1-471x469.png", 471, 469, 1, 0);
+			actor.state = "up";
+		}
+	}
+	if (actor.state == "up")
+	{	actor.y -= 5;
+
+		if (actor.y+actor.height < 0)
+		{	context.font = "100px Arial";
+			context.textAlign = "center";
+			context.textBaseline = "middle";
+			context.fillStyle = "rgb(255, 255, 255)";
+			context.fillText(actor.points+" pontos", canvas.width/2, canvas.height/2);
+			context.strokeStyle = "rgb(0, 0, 0)";
+			context.lineWidth = 3;
+			context.strokeText(actor.points+" pontos", canvas.width/2, canvas.height/2);
+			clearInterval(timer);
+			document.addEventListener("keyup",onKeyUp2);
+		}
+	}
+}
+
+function loop3()
+{	context.fillStyle = "rgb(255, 255, 255)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	stars.iterate();
+
+	obstacles1.iterate(actor);
+
+	obstacles2.iterate(actor);
+
+	context.font = "50px Arial";
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+
+	if (option == 0)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height/6-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Teclas: ["+options.keys[0]+"], ["+options.keys[1]+"], ["+options.keys[2]+"]", canvas.width/2, canvas.height/6);
+
+	if (option == 1)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height*2/6-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Som: "+((options.sound) ? "ligado" : "desligado"), canvas.width/2, canvas.height*2/6);
+
+	if (option == 2)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height*3/6-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Dificuldade: "+["fácil", "média", "difícil"][options.difficulty], canvas.width/2, canvas.height*3/6);
+
+	if (option == 3)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height*4/6-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Jogadores: "+options.players, canvas.width/2, canvas.height*4/6);
+
+	if (option == 4)
+	{	context.fillStyle = "rgb(255, 0, 0)";
+		context.fillRect(canvas.width/4+20*Math.random()-10, canvas.height*5/6-40+20*Math.random()-10, canvas.width/2+20*Math.random()-10, 80+20*Math.random()-10);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("JOGAR", canvas.width/2, canvas.height*5/6);
+}
+function loop4(){
+	context.fillStyle = "rgb(255, 255, 255)";
+	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	stars.iterate();
+
+	obstacles1.iterate(actor);
+
+	obstacles2.iterate(actor);
+
+	context.font = "50px Arial";
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+
+	if (tecla == 0)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height/5-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Pulo: ["+options.keys[0]+"]", canvas.width/2, canvas.height/5);
+
+	if (tecla == 1)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height*2/5-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Tiro 1: ["+options.keys[1]+"]", canvas.width/2, canvas.height*2/5);
+
+	if (tecla == 2)
+	{	context.fillStyle = "rgb(0, 0, 255)";
+		context.fillRect(canvas.width/4, canvas.height*3/5-40, canvas.width/2, 80);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("Tiro 2: ["+options.keys[2]+"]", canvas.width/2, canvas.height*3/5);
+
+	if (tecla == 3)
+	{	context.fillStyle = "rgb(255, 0, 0)";
+		context.fillRect(canvas.width/4+20*Math.random()-10, canvas.height*4/5-40+20*Math.random()-10, canvas.width/2+20*Math.random()-10, 80+20*Math.random()-10);
+		context.fillStyle = "rgb(255, 255, 255)";
+	}
+	else
+	{	context.fillStyle = "rgb(0, 0, 0)";
+	}
+	context.fillText("VOLTAR", canvas.width/2, canvas.height*4/5);
+}
+</script>
+</html>
+

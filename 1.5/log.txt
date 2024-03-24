@@ -1,0 +1,23 @@
+desligar som funciona
+dificuldade mexe em
+    tamanho dos inimigos
+    velocidade que o jogo fica mais difícil
+    poderes
+troca de teclas
+poderes
+    tiro simples
+    comida
+    vida
+inimigo
+    vida dependente de tamanho
+    dano também dependente
+    atira
+    pontos depende do tamanho
+    tipos
+        smart
+        fire
+        normal
+laser vai pra sempre
+caixão não pula
+pausar
+reiniciar
